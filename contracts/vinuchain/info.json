@@ -24,10 +24,16 @@
       "description": "EVM-facing relay contract between NodeDriverAuth and the EvmWriter precompile — emits canonical events for validator weight/pubkey changes, network rule updates, and epoch advances"
     },
     {
-      "name": "QuotaContract",
+      "name": "OptimizedTransparentUpgradeableProxy",
       "address": "0x1c4269fBBD4a8254F69383eeF6aF720bCD0aCda6",
       "type": "staking",
-      "description": "User/app-facing Quota/Payback proxy; call stake, unstake, and withdrawStake here. Current implementation: 0x9D6Aa03a8D4AcF7b43c562f349Ee45b3214c3bbF"
+      "description": "User/app-facing Quota/Payback EIP-1967 proxy. Users and apps call this address with the QuotaContract ABI for stake, unstake, and withdrawStake"
+    },
+    {
+      "name": "QuotaContract",
+      "address": "0x9D6Aa03a8D4AcF7b43c562f349Ee45b3214c3bbF",
+      "type": "staking",
+      "description": "Current Quota/Payback implementation behind the proxy; defines stake, unstake, withdrawStake, withdrawal requests, and fee-refund parameters"
     }
   ],
   "social": {
