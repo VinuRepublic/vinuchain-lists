@@ -33,7 +33,7 @@
       "name": "QuotaContract",
       "address": "0x0c8735bD6b3E90eaD4cdAB917474Cc6e8E58ce82",
       "type": "staking",
-      "description": "Current pre-v2.0.17 Quota/Payback implementation behind the proxy; replace this entry with the verified stakeFor implementation after the testnet proxy upgrade"
+      "description": "Current verified pre-v2.0.17 Quota/Payback implementation behind the proxy; replace this entry with the verified stakeFor implementation after the testnet proxy upgrade"
     }
   ],
   "social": {
