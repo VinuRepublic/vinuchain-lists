@@ -25,15 +25,15 @@
     },
     {
       "name": "OptimizedTransparentUpgradeableProxy",
-      "address": "0x1c4269fBBD4a8254F69383eeF6aF720bCD0aCda6",
+      "address": "0x824B93dE7221cf8a35FBd29d5202f6eFa3A29C5D",
       "type": "staking",
       "description": "User/app-facing Quota/Payback EIP-1967 proxy. Users and apps call this address with the QuotaContract ABI for stake, unstake, and withdrawStake"
     },
     {
       "name": "QuotaContract",
-      "address": "0x9D6Aa03a8D4AcF7b43c562f349Ee45b3214c3bbF",
+      "address": "0x0c8735bD6b3E90eaD4cdAB917474Cc6e8E58ce82",
       "type": "staking",
-      "description": "Current Quota/Payback implementation behind the proxy; defines stake, unstake, withdrawStake, withdrawal requests, and fee-refund parameters"
+      "description": "Current pre-v2.0.17 Quota/Payback implementation behind the proxy; replace this entry with the verified stakeFor implementation after the testnet proxy upgrade"
     }
   ],
   "social": {
