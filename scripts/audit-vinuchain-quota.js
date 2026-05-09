@@ -40,6 +40,35 @@ function findContract(info, name) {
   return info.contracts.find((entry) => entry.name === name);
 }
 
+function abiHasPayableStakeFor(abi) {
+  return abi.some(
+    (entry) =>
+      entry.type === 'function' &&
+      entry.name === 'stakeFor' &&
+      entry.stateMutability === 'payable' &&
+      entry.inputs?.length === 1 &&
+      entry.inputs[0]?.type === 'address'
+  );
+}
+
+function abiSignature(entry) {
+  const inputs = (entry.inputs || [])
+    .map((input) => `${input.indexed ? 'indexed ' : ''}${input.type}`)
+    .join(',');
+  const outputs = (entry.outputs || []).map((output) => output.type).join(',');
+  return `${entry.type}:${entry.name || ''}(${inputs})=>(${outputs})/${
+    entry.stateMutability || ''
+  }`;
+}
+
+function abiSignatures(abi) {
+  return abi.map(abiSignature).sort();
+}
+
+function abisMatch(left, right) {
+  return JSON.stringify(abiSignatures(left)) === JSON.stringify(abiSignatures(right));
+}
+
 async function getExplorerContract(implementation) {
   const response = await fetch(`${EXPLORER_API}/smart-contracts/${implementation}`);
   if (!response.ok) {
@@ -93,11 +122,18 @@ async function main() {
 
   const implementationCode = await provider.getCode(liveImplementation);
   const explorer = await getExplorerContract(liveImplementation);
+  const liveImplementationHasStakeForSelector = implementationCode
+    .toLowerCase()
+    .includes(STAKE_FOR_SELECTOR);
   let receiverImplementation;
   let receiverImplementationHasStakeForSelector;
   let receiverExplorerName;
   let receiverExplorerVerified;
+  let receiverExplorerFullyVerified;
+  let receiverExplorerPartiallyVerified;
   let receiverExplorerChangedBytecode;
+  let receiverExplorerAbiHasStakeFor;
+  let receiverExplorerAbiMatchesList;
   if (receiverImplementationEntry) {
     receiverImplementation = ethers.getAddress(receiverImplementationEntry.address);
     const receiverImplementationCode = await provider.getCode(receiverImplementation);
@@ -107,11 +143,13 @@ async function main() {
       .includes(STAKE_FOR_SELECTOR);
     receiverExplorerName = receiverExplorer.name || null;
     receiverExplorerVerified = Boolean(receiverExplorer.is_verified);
+    receiverExplorerFullyVerified = Boolean(receiverExplorer.is_fully_verified);
+    receiverExplorerPartiallyVerified = Boolean(receiverExplorer.is_partially_verified);
     receiverExplorerChangedBytecode = Boolean(receiverExplorer.is_changed_bytecode);
+    receiverExplorerAbiHasStakeFor = abiHasPayableStakeFor(receiverExplorer.abi || []);
+    receiverExplorerAbiMatchesList = abisMatch(abi, receiverExplorer.abi || []);
   }
-  const abiHasStakeFor = abi.some(
-    (entry) => entry.type === 'function' && entry.name === 'stakeFor'
-  );
+  const abiHasStakeFor = abiHasPayableStakeFor(abi);
   const sourceHasStakeFor = source.includes('function stakeFor(address');
   const result = {
     rpc: TESTNET_RPC,
@@ -128,18 +166,27 @@ async function main() {
     implementationMatchesLive:
       ethers.getAddress(implementationEntry.address) ===
       ethers.getAddress(liveImplementation),
-    liveImplementationHasStakeForSelector: implementationCode
-      .toLowerCase()
-      .includes(STAKE_FOR_SELECTOR),
+    liveImplementationHasStakeForSelector,
     receiverImplementationHasStakeForSelector,
     abiHasStakeFor,
     sourceHasStakeFor,
     explorerName: explorer.name || null,
     explorerVerified: Boolean(explorer.is_verified),
+    explorerFullyVerified: Boolean(explorer.is_fully_verified),
+    explorerPartiallyVerified: Boolean(explorer.is_partially_verified),
     explorerChangedBytecode: Boolean(explorer.is_changed_bytecode),
+    explorerAbiHasStakeFor: abiHasPayableStakeFor(explorer.abi || []),
+    explorerAbiMatchesList:
+      liveImplementationHasStakeForSelector && explorer.abi
+        ? abisMatch(abi, explorer.abi)
+        : null,
     receiverExplorerName,
     receiverExplorerVerified,
+    receiverExplorerFullyVerified,
+    receiverExplorerPartiallyVerified,
     receiverExplorerChangedBytecode,
+    receiverExplorerAbiHasStakeFor,
+    receiverExplorerAbiMatchesList,
   };
 
   const strict = requireFlag('REQUIRE_QUOTA_LISTS_CURRENT');
@@ -166,6 +213,18 @@ async function main() {
     if (result.explorerChangedBytecode) {
       failures.push('VinuExplorer reports changed bytecode');
     }
+    if (
+      result.liveImplementationHasStakeForSelector &&
+      !result.explorerAbiHasStakeFor
+    ) {
+      failures.push('live VinuExplorer ABI does not include payable stakeFor');
+    }
+    if (
+      result.liveImplementationHasStakeForSelector &&
+      result.explorerAbiMatchesList !== true
+    ) {
+      failures.push('live VinuExplorer ABI does not match checked-in ABI');
+    }
     if (receiverImplementationEntry) {
       if (!result.receiverImplementationHasStakeForSelector) {
         failures.push(
@@ -179,6 +238,14 @@ async function main() {
         failures.push(
           'VinuExplorer reports changed bytecode for receiver implementation entry'
         );
+      }
+      if (!result.receiverExplorerAbiHasStakeFor) {
+        failures.push(
+          'receiver VinuExplorer ABI does not include payable stakeFor'
+        );
+      }
+      if (result.receiverExplorerAbiMatchesList !== true) {
+        failures.push('receiver VinuExplorer ABI does not match checked-in ABI');
       }
     }
     if (failures.length > 0) {
