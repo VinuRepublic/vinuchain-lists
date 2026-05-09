@@ -66,11 +66,19 @@ npm test
 
 ```bash
 npm run validate           # Validate tokens and contracts
+npm run audit:vinuchain-quota  # Report live testnet Quota proxy/list alignment
 npm test                   # Run all 204 tests
 npm run test:unit          # Run unit tests only
 npm run test:security      # Run security tests only
 npm run test:integration   # Run integration tests only
 npm run test:all           # Run validation + all tests
+```
+
+For the Payback receiver rollout, use strict mode after the Quota proxy upgrade
+and VinuExplorer verification:
+
+```bash
+REQUIRE_QUOTA_LISTS_CURRENT=true npm run audit:vinuchain-quota
 ```
 
 ---
