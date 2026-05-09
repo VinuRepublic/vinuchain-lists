@@ -210,6 +210,12 @@ async function main() {
     if (!result.explorerVerified) {
       failures.push('live implementation is not verified on VinuExplorer');
     }
+    if (!result.explorerFullyVerified) {
+      failures.push('live implementation is not fully verified on VinuExplorer');
+    }
+    if (result.explorerPartiallyVerified) {
+      failures.push('live implementation is only partially verified on VinuExplorer');
+    }
     if (result.explorerChangedBytecode) {
       failures.push('VinuExplorer reports changed bytecode');
     }
@@ -233,6 +239,16 @@ async function main() {
       }
       if (!result.receiverExplorerVerified) {
         failures.push('receiver implementation entry is not verified on VinuExplorer');
+      }
+      if (!result.receiverExplorerFullyVerified) {
+        failures.push(
+          'receiver implementation entry is not fully verified on VinuExplorer'
+        );
+      }
+      if (result.receiverExplorerPartiallyVerified) {
+        failures.push(
+          'receiver implementation entry is only partially verified on VinuExplorer'
+        );
       }
       if (result.receiverExplorerChangedBytecode) {
         failures.push(

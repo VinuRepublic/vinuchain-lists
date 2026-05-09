@@ -85,6 +85,16 @@ async function main() {
       `Live implementation ${normalizedLiveImplementation} is not verified on VinuExplorer`
     );
   }
+  if (!explorer.is_fully_verified) {
+    throw new Error(
+      `Live implementation ${normalizedLiveImplementation} is not fully verified on VinuExplorer`
+    );
+  }
+  if (explorer.is_partially_verified) {
+    throw new Error(
+      `Live implementation ${normalizedLiveImplementation} is only partially verified on VinuExplorer`
+    );
+  }
   if (explorer.is_changed_bytecode) {
     throw new Error(
       `VinuExplorer reports changed bytecode for ${normalizedLiveImplementation}`
@@ -112,6 +122,8 @@ async function main() {
     implementation: normalizedLiveImplementation,
     explorerName: explorer.name || null,
     explorerVerified: Boolean(explorer.is_verified),
+    explorerFullyVerified: Boolean(explorer.is_fully_verified),
+    explorerPartiallyVerified: Boolean(explorer.is_partially_verified),
     explorerChangedBytecode: Boolean(explorer.is_changed_bytecode),
     dryRun,
   };
