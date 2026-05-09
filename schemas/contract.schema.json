@@ -60,6 +60,13 @@
             "minLength": 1,
             "maxLength": 100
           },
+          "artifact": {
+            "type": "string",
+            "description": "Source and ABI artifact name when a deployed address uses files named after a different contract",
+            "pattern": "^[A-Z][a-zA-Z0-9]*$",
+            "minLength": 1,
+            "maxLength": 100
+          },
           "address": {
             "type": "string",
             "description": "EIP-55 checksummed contract address",

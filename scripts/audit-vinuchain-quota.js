@@ -36,6 +36,10 @@ function getContract(info, name) {
   return contract;
 }
 
+function findContract(info, name) {
+  return info.contracts.find((entry) => entry.name === name);
+}
+
 async function getExplorerContract(implementation) {
   const response = await fetch(`${EXPLORER_API}/smart-contracts/${implementation}`);
   if (!response.ok) {
@@ -55,6 +59,10 @@ async function main() {
   );
   const proxyEntry = getContract(info, 'OptimizedTransparentUpgradeableProxy');
   const implementationEntry = getContract(info, 'QuotaContract');
+  const receiverImplementationEntry = findContract(
+    info,
+    'QuotaContractReceiverImplementation'
+  );
   const provider = new ethers.JsonRpcProvider(TESTNET_RPC);
   const proxyAdmin = new ethers.Contract(PROXY_ADMIN, proxyAdminAbi, provider);
 
@@ -85,6 +93,22 @@ async function main() {
 
   const implementationCode = await provider.getCode(liveImplementation);
   const explorer = await getExplorerContract(liveImplementation);
+  let receiverImplementation;
+  let receiverImplementationHasStakeForSelector;
+  let receiverExplorerName;
+  let receiverExplorerVerified;
+  let receiverExplorerChangedBytecode;
+  if (receiverImplementationEntry) {
+    receiverImplementation = ethers.getAddress(receiverImplementationEntry.address);
+    const receiverImplementationCode = await provider.getCode(receiverImplementation);
+    const receiverExplorer = await getExplorerContract(receiverImplementation);
+    receiverImplementationHasStakeForSelector = receiverImplementationCode
+      .toLowerCase()
+      .includes(STAKE_FOR_SELECTOR);
+    receiverExplorerName = receiverExplorer.name || null;
+    receiverExplorerVerified = Boolean(receiverExplorer.is_verified);
+    receiverExplorerChangedBytecode = Boolean(receiverExplorer.is_changed_bytecode);
+  }
   const abiHasStakeFor = abi.some(
     (entry) => entry.type === 'function' && entry.name === 'stakeFor'
   );
@@ -98,6 +122,7 @@ async function main() {
     infoProxy: proxyEntry.address,
     infoImplementation: implementationEntry.address,
     liveImplementation,
+    receiverImplementation,
     proxyMatchesInfo:
       ethers.getAddress(proxyEntry.address) === ethers.getAddress(QUOTA_PROXY),
     implementationMatchesLive:
@@ -106,11 +131,15 @@ async function main() {
     liveImplementationHasStakeForSelector: implementationCode
       .toLowerCase()
       .includes(STAKE_FOR_SELECTOR),
+    receiverImplementationHasStakeForSelector,
     abiHasStakeFor,
     sourceHasStakeFor,
     explorerName: explorer.name || null,
     explorerVerified: Boolean(explorer.is_verified),
     explorerChangedBytecode: Boolean(explorer.is_changed_bytecode),
+    receiverExplorerName,
+    receiverExplorerVerified,
+    receiverExplorerChangedBytecode,
   };
 
   const strict = requireFlag('REQUIRE_QUOTA_LISTS_CURRENT');
@@ -136,6 +165,21 @@ async function main() {
     }
     if (result.explorerChangedBytecode) {
       failures.push('VinuExplorer reports changed bytecode');
+    }
+    if (receiverImplementationEntry) {
+      if (!result.receiverImplementationHasStakeForSelector) {
+        failures.push(
+          'receiver implementation entry does not contain stakeFor selector'
+        );
+      }
+      if (!result.receiverExplorerVerified) {
+        failures.push('receiver implementation entry is not verified on VinuExplorer');
+      }
+      if (result.receiverExplorerChangedBytecode) {
+        failures.push(
+          'VinuExplorer reports changed bytecode for receiver implementation entry'
+        );
+      }
     }
     if (failures.length > 0) {
       console.log(JSON.stringify(result, null, 2));

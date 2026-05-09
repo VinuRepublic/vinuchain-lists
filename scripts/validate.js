@@ -222,6 +222,13 @@ function validateContractFiles(contract, projectSlug, projectPath) {
     return false;
   }
 
+  const artifactName = contract.artifact || contract.name;
+  const artifactValidation = validateContractName(artifactName);
+  if (!artifactValidation.valid) {
+    logger.error(`  ${artifactValidation.error}`);
+    return false;
+  }
+
   // Validate address checksum
   const addressValidation = validateEIP55Checksum(contract.address, contract.name);
   if (!addressValidation.valid) {
@@ -239,8 +246,8 @@ function validateContractFiles(contract, projectSlug, projectPath) {
   contractAddresses.set(contract.address, { project: projectSlug, contract: contract.name });
 
   // Verify contract files exist (using safe path construction - addresses CRITICAL-01)
-  const solPathResult = safePathJoin(projectPath, `${contract.name}.sol`);
-  const abiPathResult = safePathJoin(projectPath, `${contract.name}_abi.json`);
+  const solPathResult = safePathJoin(projectPath, `${artifactName}.sol`);
+  const abiPathResult = safePathJoin(projectPath, `${artifactName}_abi.json`);
 
   if (!solPathResult.valid) {
     logger.error(`  ${solPathResult.error}`);
@@ -258,26 +265,26 @@ function validateContractFiles(contract, projectSlug, projectPath) {
   // Check Solidity file
   const solReadResult = safeReadFile(solPath);
   if (!solReadResult.success) {
-    logger.error(`  Missing ${contract.name}.sol: ${solReadResult.error}`);
+    logger.error(`  Missing ${artifactName}.sol: ${solReadResult.error}`);
     return false;
   }
 
   // Validate Solidity content (addresses MEDIUM-04, MISSING-09)
-  const solValidation = validateSolidityFile(solReadResult.content, contract.name);
+  const solValidation = validateSolidityFile(solReadResult.content, artifactName);
   if (!solValidation.valid) {
-    logger.error(`  ${contract.name}.sol: ${solValidation.error}`);
+    logger.error(`  ${artifactName}.sol: ${solValidation.error}`);
     return false;
   }
 
   // Log Solidity warnings
   if (solValidation.warnings && solValidation.warnings.length > 0) {
-    solValidation.warnings.forEach(w => logger.warn(`  ${contract.name}.sol: ${w}`));
+    solValidation.warnings.forEach(w => logger.warn(`  ${artifactName}.sol: ${w}`));
   }
 
   // Check ABI file
   const abiReadResult = safeReadFile(abiPath);
   if (!abiReadResult.success) {
-    logger.error(`  Missing ${contract.name}_abi.json: ${abiReadResult.error}`);
+    logger.error(`  Missing ${artifactName}_abi.json: ${abiReadResult.error}`);
     return false;
   }
 
@@ -286,11 +293,11 @@ function validateContractFiles(contract, projectSlug, projectPath) {
   try {
     abi = safeReadJSON(abiPath);
   } catch (e) {
-    logger.error(`  Invalid JSON in ${contract.name}_abi.json: ${e.message}`);
+    logger.error(`  Invalid JSON in ${artifactName}_abi.json: ${e.message}`);
     return false;
   }
 
-  const abiValidation = validateABI(abi, contract.name);
+  const abiValidation = validateABI(abi, artifactName);
   if (!abiValidation.valid) {
     logger.error(`  ${abiValidation.error}`);
     return false;
@@ -301,7 +308,8 @@ function validateContractFiles(contract, projectSlug, projectPath) {
     abiValidation.warnings.forEach(w => logger.warn(`  ${w}`));
   }
 
-  logger.success(`  ${contract.type}: ${contract.name} (${contract.address})`);
+  const artifactSuffix = contract.artifact ? ` [artifact: ${contract.artifact}]` : '';
+  logger.success(`  ${contract.type}: ${contract.name} (${contract.address})${artifactSuffix}`);
   return true;
 }
 
