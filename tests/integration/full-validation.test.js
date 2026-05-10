@@ -33,13 +33,23 @@ describe('Full Validation Integration Tests', () => {
     it('should validate all contracts successfully', function() {
       this.timeout(10000);
 
+      const contractsDir = path.join(__dirname, '../../contracts');
+      const projectDirs = fs.readdirSync(contractsDir).filter(f =>
+        fs.statSync(path.join(contractsDir, f)).isDirectory()
+      );
+      const contractCount = projectDirs.reduce((count, projectSlug) => {
+        const infoPath = path.join(contractsDir, projectSlug, 'info.json');
+        const projectData = JSON.parse(fs.readFileSync(infoPath, 'utf8'));
+        return count + projectData.contracts.length;
+      }, 0);
+
       const output = execSync('node scripts/validate.js', {
         cwd: path.join(__dirname, '../..'),
         encoding: 'utf8',
       });
 
-      expect(output).to.include('Total projects validated: 1');
-      expect(output).to.include('Total contract files validated: 6');
+      expect(output).to.include(`Total projects validated: ${projectDirs.length}`);
+      expect(output).to.include(`Total contract files validated: ${contractCount}`);
     });
 
     it('should report zero errors', function() {
@@ -129,11 +139,12 @@ describe('Full Validation Integration Tests', () => {
         expect(projectData.contracts).to.be.an('array');
 
         projectData.contracts.forEach(contract => {
-          const solPath = path.join(contractsDir, projectSlug, `${contract.name}.sol`);
-          const abiPath = path.join(contractsDir, projectSlug, `${contract.name}_abi.json`);
+          const artifactName = contract.artifact || contract.name;
+          const solPath = path.join(contractsDir, projectSlug, `${artifactName}.sol`);
+          const abiPath = path.join(contractsDir, projectSlug, `${artifactName}_abi.json`);
 
-          expect(fs.existsSync(solPath), `Missing ${contract.name}.sol`).to.be.true;
-          expect(fs.existsSync(abiPath), `Missing ${contract.name}_abi.json`).to.be.true;
+          expect(fs.existsSync(solPath), `Missing ${artifactName}.sol`).to.be.true;
+          expect(fs.existsSync(abiPath), `Missing ${artifactName}_abi.json`).to.be.true;
         });
       });
     });
